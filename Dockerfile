@@ -12,3 +12,4 @@ COPY src/ /app/src/
 
 # Lệnh kiểm thử mặc định khi container khởi chạy
 CMD ["echo", "Docker container built successfully inside Self-hosted Runner via DooD socket!"]
+
