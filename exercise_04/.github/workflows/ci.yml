@@ -1,0 +1,70 @@
+name: Pull and Verify Image from GHCR
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Khối permissions khai báo quyền truy xuất tài nguyên bảo mật cho GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: read    # Cấp quyền đọc và pull container images từ GHCR
+
+jobs:
+  verify_ghcr_image:
+    name: Pull and Verify GHCR Container
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Đăng nhập vào GHCR sử dụng secrets.GITHUB_TOKEN
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 3. Định dạng Image Name (Chuyển chữ hoa thành chữ thường) & Kéo Image
+        id: prep_image
+        run: |
+          echo "=========================================================="
+          echo " Chuẩn hóa tên Image sang chữ thường (lowercase)"
+          echo "=========================================================="
+          # Chuyển repository owner sang chữ thường để tránh lỗi Docker CLI 'invalid reference format'
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_URI="ghcr.io/${REPO_OWNER}/payment-service:1.0.0"
+          echo "IMAGE_URI=${IMAGE_URI}" >> $GITHUB_ENV
+          echo "Target Image URI: ${IMAGE_URI}"
+          
+          echo "=========================================================="
+          echo " Thực hiện kéo (pull) Image từ GitHub Container Registry"
+          echo "=========================================================="
+          docker pull ${IMAGE_URI}
+
+      - name: 4. Khởi chạy Container ở chế độ nền (Detached mode)
+        run: |
+          echo "=========================================================="
+          echo " Khởi chạy container verify ở chế độ nền"
+          echo "=========================================================="
+          docker run -d --name payment-service-verify -p 8083:8083 ${{ env.IMAGE_URI }}
+
+      - name: 5. Kiểm tra trạng thái và log hoạt động của Container
+        run: |
+          echo "=========================================================="
+          echo " Đợi 3 giây để ứng dụng khởi động và kiểm tra process"
+          echo "=========================================================="
+          sleep 3
+          docker ps | grep payment-service-verify
+          echo "----------------------------------------------------------"
+          echo " Log khởi động của container:"
+          docker logs payment-service-verify
+          echo "=========================================================="
+          echo " Xác minh hoàn tất! Container chạy ổn định và thông suốt!"
+          echo "=========================================================="
+

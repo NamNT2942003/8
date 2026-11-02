@@ -1,0 +1,46 @@
+name: Verify Docker DooD Socket CI
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  docker_dood_test:
+    name: Test Docker-outside-of-Docker (DooD) Execution
+    runs-on: [self-hosted, dood-runner]
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: 1. Kiểm tra kết nối tới Docker Daemon (docker version & info)
+        run: |
+          echo "=========================================================="
+          echo " Kiểm tra kết nối Docker Daemon qua socket /var/run/docker.sock"
+          echo "=========================================================="
+          docker version
+          echo "----------------------------------------------------------"
+          docker info | grep -E "Server Version|Operating System|OSType|Architecture|Docker Root Dir"
+
+      - name: 2. Kiểm chứng lệnh Docker Build (DooD Verification)
+        run: |
+          echo "=========================================================="
+          echo " Thực hiện build Docker Image bằng Docker Daemon của Host"
+          echo "=========================================================="
+          docker build -t quickbite/dood-verification:v1.0 .
+
+      - name: 3. Kiểm chứng Image vừa build trong hệ thống Host
+        run: |
+          echo "=========================================================="
+          echo " Danh sách image được lưu trên Docker Host:"
+          echo "=========================================================="
+          docker images | grep "quickbite/dood-verification"
+
+      - name: 4. Chạy thử container để xác nhận hoàn tất quy trình
+        run: |
+          echo "=========================================================="
+          echo " Khởi chạy container vừa build để xác nhận:"
+          echo "=========================================================="
+          docker run --rm quickbite/dood-verification:v1.0
+          echo " CI Job hoàn thành xuất sắc! Docker Socket hoạt động 100%!"

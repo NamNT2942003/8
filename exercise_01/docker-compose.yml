@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  github-runner:
+    image: myoung34/github-runner:latest
+    container_name: quickbite-dood-runner
+    restart: unless-stopped
+    environment:
+      # URL của GitHub Repository hoặc Organization cần đăng ký runner
+      - REPO_URL=${REPO_URL:-https://github.com/NamNT2942003/8}
+      # Token đăng ký runner (lấy tại repo: Settings > Actions > Runners > New runner)
+      - RUNNER_TOKEN=${RUNNER_TOKEN}
+      # Tên định danh của runner hiển thị trong danh sách GitHub Actions
+      - RUNNER_NAME=${RUNNER_NAME:-quickbite-dood-runner}
+      # Các nhãn (Labels) để workflow GitHub Actions định tuyến chính xác vào runner này
+      - LABELS=${LABELS:-self-hosted,dood-runner,linux}
+      # Thư mục làm việc của runner bên trong container
+      - RUNNER_WORKDIR=/_work
+    volumes:
+      # =========================================================================
+      # GIẢI PHÁP SỬA LỖI DOOD (Docker-outside-of-Docker):
+      # Ánh xạ UNIX Domain Socket từ máy host vào bên trong container Runner.
+      # Giúp Docker CLI trong container có thể gửi REST API commands trực tiếp
+      # tới Docker Daemon (dockerd) đang chạy trên máy Host.
+      # =========================================================================
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Thư mục chứa workspace build và lưu cache dữ liệu giữa các lần chạy job
+      - ./runner-work:/_work
